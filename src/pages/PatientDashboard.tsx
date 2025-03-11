@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Calendar } from '@/components/ui/calendar';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Bell, Calendar as CalendarIcon, ClipboardList, Clock, Tooth } from 'lucide-react';
+import { Bell, Calendar as CalendarIcon, ClipboardList, Clock, Stethoscope } from 'lucide-react';
 
 const mockAppointments = [
   { id: 1, date: 'Oct 15, 2023', time: '10:00 AM', doctor: 'Dr. Smith', type: 'Regular Checkup' },
@@ -63,7 +62,7 @@ const PatientDashboard = () => {
               </div>
               <div className="flex items-center gap-3">
                 <div className="bg-primary/10 rounded-full p-2">
-                  <Tooth className="h-5 w-5 text-primary" />
+                  <Stethoscope className="h-5 w-5 text-primary" />
                 </div>
                 <div>
                   <p className="font-medium">Dr. Smith</p>
