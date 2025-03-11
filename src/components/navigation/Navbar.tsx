@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, UserCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import NavLink from '../common/NavLink';
 import { Button } from '@/components/ui/button';
@@ -40,15 +40,15 @@ const Navbar = () => {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-8">
           <NavLink to="/">Home</NavLink>
-          <NavLink to="/services">Services</NavLink>
-          <NavLink to="/doctors">Doctors</NavLink>
           <NavLink to="/appointments">Appointments</NavLink>
-          <NavLink to="/marketplace">Shop</NavLink>
-          <NavLink to="/about">About</NavLink>
+          <NavLink to="/dashboard">Dashboard</NavLink>
+          <NavLink to="/records">Records</NavLink>
+          <NavLink to="/treatment-planner">Treatment Plan</NavLink>
         </nav>
 
         <div className="hidden md:flex items-center space-x-4">
-          <Button variant="outline" size="sm" className="rounded-full px-5">
+          <Button variant="outline" size="sm" className="rounded-full px-5 flex items-center gap-2">
+            <UserCircle className="h-4 w-4" />
             Login
           </Button>
           <Button size="sm" className="rounded-full px-5">
@@ -85,24 +85,6 @@ const Navbar = () => {
               Home
             </NavLink>
             <NavLink 
-              to="/services" 
-              onClick={() => setIsOpen(false)}
-              className="py-3"
-              activeClassName="text-primary font-medium"
-              inactiveClassName="text-foreground/80 hover:text-foreground"
-            >
-              Services
-            </NavLink>
-            <NavLink 
-              to="/doctors" 
-              onClick={() => setIsOpen(false)}
-              className="py-3"
-              activeClassName="text-primary font-medium"
-              inactiveClassName="text-foreground/80 hover:text-foreground"
-            >
-              Doctors
-            </NavLink>
-            <NavLink 
               to="/appointments" 
               onClick={() => setIsOpen(false)}
               className="py-3"
@@ -112,27 +94,37 @@ const Navbar = () => {
               Appointments
             </NavLink>
             <NavLink 
-              to="/marketplace" 
+              to="/dashboard" 
               onClick={() => setIsOpen(false)}
               className="py-3"
               activeClassName="text-primary font-medium"
               inactiveClassName="text-foreground/80 hover:text-foreground"
             >
-              Shop
+              Dashboard
             </NavLink>
             <NavLink 
-              to="/about" 
+              to="/records" 
               onClick={() => setIsOpen(false)}
               className="py-3"
               activeClassName="text-primary font-medium"
               inactiveClassName="text-foreground/80 hover:text-foreground"
             >
-              About
+              Records
+            </NavLink>
+            <NavLink 
+              to="/treatment-planner" 
+              onClick={() => setIsOpen(false)}
+              className="py-3"
+              activeClassName="text-primary font-medium"
+              inactiveClassName="text-foreground/80 hover:text-foreground"
+            >
+              Treatment Plan
             </NavLink>
           </nav>
           
           <div className="mt-auto flex flex-col space-y-4 w-full">
-            <Button variant="outline" className="w-full py-6">
+            <Button variant="outline" className="w-full py-6 flex items-center justify-center gap-2">
+              <UserCircle className="h-5 w-5" />
               Login
             </Button>
             <Button className="w-full py-6">
