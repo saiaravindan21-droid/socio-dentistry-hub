@@ -14,12 +14,23 @@ const BlurImage = ({ src, alt, className, width, height }: BlurImageProps) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Skip loading state for empty image sources
+    if (!src) {
+      setIsLoading(false);
+      return;
+    }
+    
     const img = new Image();
     img.src = src;
     img.onload = () => {
       setIsLoading(false);
     };
   }, [src]);
+
+  // If no source is provided, don't render an image
+  if (!src) {
+    return null;
+  }
 
   return (
     <img

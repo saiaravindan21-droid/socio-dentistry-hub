@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Calendar } from '@/components/ui/calendar';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Bell, Calendar as CalendarIcon, ClipboardList, Clock, Stethoscope } from 'lucide-react';
+import UserAvatar from '@/components/common/UserAvatar';
 
 const mockAppointments = [
   { id: 1, date: 'Oct 15, 2023', time: '10:00 AM', doctor: 'Dr. Smith', type: 'Regular Checkup' },
@@ -35,9 +36,12 @@ const PatientDashboard = () => {
     <PageLayout>
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Patient Dashboard</h1>
-            <p className="text-muted-foreground">Welcome back, Sarah! Manage your dental health in one place.</p>
+          <div className="flex items-center gap-3">
+            <UserAvatar name="Sarah Johnson" className="h-12 w-12" />
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Patient Dashboard</h1>
+              <p className="text-muted-foreground">Welcome back, Sarah! Manage your dental health in one place.</p>
+            </div>
           </div>
           <Button className="flex items-center gap-2">
             <Bell size={16} /> Notifications
