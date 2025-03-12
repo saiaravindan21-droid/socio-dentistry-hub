@@ -21,8 +21,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { CalendarIcon, CheckCircle2, Clock } from 'lucide-react';
+import { CalendarIcon, CheckCircle2, Clock, CreditCard } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import PaymentForm from '@/components/common/PaymentForm';
 
 const mockDoctors = [
   { id: 1, name: 'Dr. Sarah Smith', specialty: 'General Dentistry', availableTimes: ['9:00 AM', '11:30 AM', '2:00 PM'] },
@@ -52,6 +53,7 @@ const Appointments = () => {
   const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');
   const [appointmentToCancel, setAppointmentToCancel] = useState<number | null>(null);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
@@ -98,6 +100,11 @@ const Appointments = () => {
       return;
     }
     
+    if (currentStep === 4) {
+      setIsPaymentOpen(true);
+      return;
+    }
+    
     setCurrentStep(currentStep + 1);
   };
   
@@ -105,7 +112,7 @@ const Appointments = () => {
     setCurrentStep(currentStep - 1);
   };
   
-  const handleBookAppointment = () => {
+  const handlePaymentSuccess = () => {
     if (!selectedDate || !selectedDoctor || !selectedTime || !selectedType) {
       toast({
         title: "Missing information",
@@ -148,6 +155,7 @@ const Appointments = () => {
     setPhone('');
     setNotes('');
     setCurrentStep(1);
+    setIsPaymentOpen(false);
   };
   
   const handleCancelAppointment = (appointmentId: number) => {
@@ -169,6 +177,13 @@ const Appointments = () => {
   const selectedDoctorData = selectedDoctor ? mockDoctors.find(d => d.id.toString() === selectedDoctor) : null;
   const selectedTypeData = selectedType ? appointmentTypes.find(t => t.id === selectedType) : null;
   
+  const getAppointmentPrice = () => {
+    if (!selectedType) return 0;
+    const typeData = appointmentTypes.find(t => t.id === selectedType);
+    if (!typeData) return 0;
+    return parseFloat(typeData.price.replace('$', ''));
+  };
+  
   return (
     <PageLayout>
       <div className="max-w-4xl mx-auto">
@@ -182,233 +197,263 @@ const Appointments = () => {
           </TabsList>
           
           <TabsContent value="book" className="mt-6">
-            <div className="space-y-6">
-              <div className="relative pb-12">
-                <div className="absolute left-4 h-full w-0.5 bg-gray-200"></div>
-                <div className="flex items-center mb-8 relative z-10">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium ${
-                    currentStep >= 1 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {currentStep > 1 ? <CheckCircle2 className="h-5 w-5" /> : 1}
-                  </div>
-                  <span className="ml-3 font-medium">Select Date</span>
-                </div>
-                
-                <div className="flex items-center mb-8 relative z-10">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium ${
-                    currentStep >= 2 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {currentStep > 2 ? <CheckCircle2 className="h-5 w-5" /> : 2}
-                  </div>
-                  <span className="ml-3 font-medium">Choose Doctor & Time</span>
-                </div>
-                
-                <div className="flex items-center mb-8 relative z-10">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium ${
-                    currentStep >= 3 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {currentStep > 3 ? <CheckCircle2 className="h-5 w-5" /> : 3}
-                  </div>
-                  <span className="ml-3 font-medium">Select Appointment Type</span>
-                </div>
-                
-                <div className="flex items-center relative z-10">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium ${
-                    currentStep >= 4 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                  }`}>
-                    4
-                  </div>
-                  <span className="ml-3 font-medium">Confirm Details</span>
-                </div>
+            {isPaymentOpen ? (
+              <div className="space-y-6">
+                <Button 
+                  variant="ghost" 
+                  className="mb-4"
+                  onClick={() => setIsPaymentOpen(false)}
+                >
+                  ← Back to Details
+                </Button>
+                <PaymentForm 
+                  amount={getAppointmentPrice()}
+                  onSuccess={handlePaymentSuccess}
+                  onCancel={() => setIsPaymentOpen(false)}
+                  serviceName={selectedTypeData?.name || "Appointment"}
+                />
               </div>
-              
-              {currentStep === 1 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Select Appointment Date</CardTitle>
-                    <CardDescription>Choose a preferred date for your dental visit</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex justify-center">
-                    <Calendar
-                      mode="single"
-                      selected={selectedDate}
-                      onSelect={handleDateSelect}
-                      disabled={(date) => {
-                        const day = date.getDay();
-                        return date < new Date(new Date().setHours(0, 0, 0, 0)) || day === 0 || day === 6;
-                      }}
-                      className="rounded-md border pointer-events-auto"
-                    />
-                  </CardContent>
-                  <CardFooter className="flex justify-end">
-                    <Button onClick={handleNextStep}>Next Step</Button>
-                  </CardFooter>
-                </Card>
-              )}
-              
-              {currentStep === 2 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Select Doctor & Time</CardTitle>
-                    <CardDescription>Choose from our available specialists</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div>
-                      <Label htmlFor="doctor">Select Doctor</Label>
-                      <Select value={selectedDoctor} onValueChange={handleDoctorSelect}>
-                        <SelectTrigger id="doctor" className="w-full">
-                          <SelectValue placeholder="Select a doctor" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {mockDoctors.map((doctor) => (
-                            <SelectItem key={doctor.id} value={doctor.id.toString()}>
-                              {doctor.name} - {doctor.specialty}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+            ) : (
+              <div className="space-y-6">
+                <div className="relative pb-12">
+                  <div className="absolute left-4 h-full w-0.5 bg-gray-200"></div>
+                  <div className="flex items-center mb-8 relative z-10">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium ${
+                      currentStep >= 1 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {currentStep > 1 ? <CheckCircle2 className="h-5 w-5" /> : 1}
                     </div>
-                    
-                    {selectedDoctor && (
-                      <div>
-                        <Label>Available Time Slots for {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : ''}</Label>
-                        <div className="grid grid-cols-3 gap-3 mt-2">
-                          {selectedDoctorData?.availableTimes.map((time) => (
-                            <Button
-                              key={time}
-                              type="button"
-                              variant={selectedTime === time ? "default" : "outline"}
-                              className="flex items-center justify-center gap-2"
-                              onClick={() => handleTimeSelect(time)}
-                            >
-                              <Clock className="h-4 w-4" />
-                              {time}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                  <CardFooter className="flex justify-between">
-                    <Button variant="outline" onClick={handlePreviousStep}>Previous</Button>
-                    <Button onClick={handleNextStep}>Next Step</Button>
-                  </CardFooter>
-                </Card>
-              )}
-              
-              {currentStep === 3 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Select Appointment Type</CardTitle>
-                    <CardDescription>Choose the dental service you need</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <RadioGroup value={selectedType} onValueChange={handleTypeSelect} className="space-y-3">
-                      {appointmentTypes.map((type) => (
-                        <div key={type.id} className="flex items-center space-x-2 rounded-md border p-4">
-                          <RadioGroupItem value={type.id} id={type.id} />
-                          <Label htmlFor={type.id} className="flex flex-1 justify-between cursor-pointer">
-                            <div>
-                              <span className="font-medium">{type.name}</span>
-                              <p className="text-sm text-muted-foreground">Duration: {type.duration}</p>
-                            </div>
-                            <span className="font-medium">{type.price}</span>
-                          </Label>
-                        </div>
-                      ))}
-                    </RadioGroup>
-                  </CardContent>
-                  <CardFooter className="flex justify-between">
-                    <Button variant="outline" onClick={handlePreviousStep}>Previous</Button>
-                    <Button onClick={handleNextStep}>Next Step</Button>
-                  </CardFooter>
-                </Card>
-              )}
-              
-              {currentStep === 4 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Confirm Your Appointment</CardTitle>
-                    <CardDescription>Please review your appointment details</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="rounded-lg border p-4 bg-primary/5">
-                      <h3 className="font-medium mb-4">Appointment Summary</h3>
-                      <div className="space-y-3">
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Date:</span>
-                          <span className="font-medium">{selectedDate ? format(selectedDate, 'MMMM d, yyyy') : ''}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Time:</span>
-                          <span className="font-medium">{selectedTime}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Doctor:</span>
-                          <span className="font-medium">{selectedDoctorData?.name}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Service:</span>
-                          <span className="font-medium">{selectedTypeData?.name}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Duration:</span>
-                          <span className="font-medium">{selectedTypeData?.duration}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Price:</span>
-                          <span className="font-medium">{selectedTypeData?.price}</span>
-                        </div>
-                      </div>
+                    <span className="ml-3 font-medium">Select Date</span>
+                  </div>
+                  
+                  <div className="flex items-center mb-8 relative z-10">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium ${
+                      currentStep >= 2 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {currentStep > 2 ? <CheckCircle2 className="h-5 w-5" /> : 2}
                     </div>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="name">Full Name</Label>
-                        <Input 
-                          id="name" 
-                          placeholder="Enter your full name" 
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="email">Email Address</Label>
-                        <Input 
-                          id="email" 
-                          type="email" 
-                          placeholder="Enter your email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="phone">Phone Number</Label>
-                        <Input 
-                          id="phone" 
-                          placeholder="Enter your phone number" 
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="notes">Special Notes (Optional)</Label>
-                        <Input 
-                          id="notes" 
-                          placeholder="Any special requirements or concerns" 
-                          value={notes}
-                          onChange={(e) => setNotes(e.target.value)}
-                        />
-                      </div>
+                    <span className="ml-3 font-medium">Choose Doctor & Time</span>
+                  </div>
+                  
+                  <div className="flex items-center mb-8 relative z-10">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium ${
+                      currentStep >= 3 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {currentStep > 3 ? <CheckCircle2 className="h-5 w-5" /> : 3}
                     </div>
-                  </CardContent>
-                  <CardFooter className="flex justify-between">
-                    <Button variant="outline" onClick={handlePreviousStep}>Previous</Button>
-                    <Button onClick={handleBookAppointment}>Book Appointment</Button>
-                  </CardFooter>
-                </Card>
-              )}
-            </div>
+                    <span className="ml-3 font-medium">Select Appointment Type</span>
+                  </div>
+                  
+                  <div className="flex items-center mb-8 relative z-10">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium ${
+                      currentStep >= 4 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {currentStep > 4 ? <CheckCircle2 className="h-5 w-5" /> : 4}
+                    </div>
+                    <span className="ml-3 font-medium">Confirm Details</span>
+                  </div>
+                  
+                  <div className="flex items-center relative z-10">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium ${
+                      currentStep >= 5 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                    }`}>
+                      5
+                    </div>
+                    <span className="ml-3 font-medium">Payment</span>
+                  </div>
+                </div>
+                
+                {currentStep === 1 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Select Appointment Date</CardTitle>
+                      <CardDescription>Choose a preferred date for your dental visit</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex justify-center">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={handleDateSelect}
+                        disabled={(date) => {
+                          const day = date.getDay();
+                          return date < new Date(new Date().setHours(0, 0, 0, 0)) || day === 0 || day === 6;
+                        }}
+                        className="rounded-md border pointer-events-auto"
+                      />
+                    </CardContent>
+                    <CardFooter className="flex justify-end">
+                      <Button onClick={handleNextStep}>Next Step</Button>
+                    </CardFooter>
+                  </Card>
+                )}
+                
+                {currentStep === 2 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Select Doctor & Time</CardTitle>
+                      <CardDescription>Choose from our available specialists</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div>
+                        <Label htmlFor="doctor">Select Doctor</Label>
+                        <Select value={selectedDoctor} onValueChange={handleDoctorSelect}>
+                          <SelectTrigger id="doctor" className="w-full">
+                            <SelectValue placeholder="Select a doctor" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {mockDoctors.map((doctor) => (
+                              <SelectItem key={doctor.id} value={doctor.id.toString()}>
+                                {doctor.name} - {doctor.specialty}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      {selectedDoctor && (
+                        <div>
+                          <Label>Available Time Slots for {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : ''}</Label>
+                          <div className="grid grid-cols-3 gap-3 mt-2">
+                            {selectedDoctorData?.availableTimes.map((time) => (
+                              <Button
+                                key={time}
+                                type="button"
+                                variant={selectedTime === time ? "default" : "outline"}
+                                className="flex items-center justify-center gap-2"
+                                onClick={() => handleTimeSelect(time)}
+                              >
+                                <Clock className="h-4 w-4" />
+                                {time}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                    <CardFooter className="flex justify-between">
+                      <Button variant="outline" onClick={handlePreviousStep}>Previous</Button>
+                      <Button onClick={handleNextStep}>Next Step</Button>
+                    </CardFooter>
+                  </Card>
+                )}
+                
+                {currentStep === 3 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Select Appointment Type</CardTitle>
+                      <CardDescription>Choose the dental service you need</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <RadioGroup value={selectedType} onValueChange={handleTypeSelect} className="space-y-3">
+                        {appointmentTypes.map((type) => (
+                          <div key={type.id} className="flex items-center space-x-2 rounded-md border p-4">
+                            <RadioGroupItem value={type.id} id={type.id} />
+                            <Label htmlFor={type.id} className="flex flex-1 justify-between cursor-pointer">
+                              <div>
+                                <span className="font-medium">{type.name}</span>
+                                <p className="text-sm text-muted-foreground">Duration: {type.duration}</p>
+                              </div>
+                              <span className="font-medium">{type.price}</span>
+                            </Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    </CardContent>
+                    <CardFooter className="flex justify-between">
+                      <Button variant="outline" onClick={handlePreviousStep}>Previous</Button>
+                      <Button onClick={handleNextStep}>Next Step</Button>
+                    </CardFooter>
+                  </Card>
+                )}
+                
+                {currentStep === 4 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Confirm Your Appointment</CardTitle>
+                      <CardDescription>Please review your appointment details</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="rounded-lg border p-4 bg-primary/5">
+                        <h3 className="font-medium mb-4">Appointment Summary</h3>
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <span className="text-sm text-muted-foreground">Date:</span>
+                            <span className="font-medium">{selectedDate ? format(selectedDate, 'MMMM d, yyyy') : ''}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-muted-foreground">Time:</span>
+                            <span className="font-medium">{selectedTime}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-muted-foreground">Doctor:</span>
+                            <span className="font-medium">{selectedDoctorData?.name}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-muted-foreground">Service:</span>
+                            <span className="font-medium">{selectedTypeData?.name}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-muted-foreground">Duration:</span>
+                            <span className="font-medium">{selectedTypeData?.duration}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-muted-foreground">Price:</span>
+                            <span className="font-medium">{selectedTypeData?.price}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="name">Full Name</Label>
+                          <Input 
+                            id="name" 
+                            placeholder="Enter your full name" 
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="email">Email Address</Label>
+                          <Input 
+                            id="email" 
+                            type="email" 
+                            placeholder="Enter your email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="phone">Phone Number</Label>
+                          <Input 
+                            id="phone" 
+                            placeholder="Enter your phone number" 
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="notes">Special Notes (Optional)</Label>
+                          <Input 
+                            id="notes" 
+                            placeholder="Any special requirements or concerns" 
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="flex justify-between">
+                      <Button variant="outline" onClick={handlePreviousStep}>Previous</Button>
+                      <Button onClick={handleNextStep}>
+                        <CreditCard className="mr-2 h-4 w-4" />
+                        Proceed to Payment
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                )}
+              </div>
+            )}
           </TabsContent>
           
           <TabsContent value="manage" className="mt-6">
