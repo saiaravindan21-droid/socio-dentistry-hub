@@ -5,12 +5,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { CartProvider } from "./context/CartContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Appointments from "./pages/Appointments";
 import PatientDashboard from "./pages/PatientDashboard";
 import DentalRecords from "./pages/DentalRecords";
 import TreatmentPlanner from "./pages/TreatmentPlanner";
+import Marketplace from "./pages/Marketplace";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 
@@ -58,6 +60,11 @@ const AppRoutes = () => {
           <TreatmentPlanner />
         </ProtectedRoute>
       } />
+      <Route path="/marketplace" element={
+        <ProtectedRoute>
+          <Marketplace />
+        </ProtectedRoute>
+      } />
       
       {/* Catch-all route */}
       <Route path="*" element={<NotFound />} />
@@ -72,7 +79,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <AppRoutes />
+          <CartProvider>
+            <AppRoutes />
+          </CartProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

@@ -1,12 +1,14 @@
 
 import { useState, useEffect } from 'react';
-import { Menu, X, LogOut } from 'lucide-react';
+import { Menu, X, LogOut, ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import NavLink from '../common/NavLink';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
+import { useCart } from '@/context/CartContext';
 import { Link } from 'react-router-dom';
 import UserAvatar from '../common/UserAvatar';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +22,7 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
+  const { getCartCount } = useCart();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -51,11 +54,12 @@ const Navbar = () => {
 
         {/* Desktop Navigation */}
         {isAuthenticated ? (
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden md:flex items-center space-x-6">
             <NavLink to="/dashboard">Dashboard</NavLink>
             <NavLink to="/appointments">Appointments</NavLink>
             <NavLink to="/records">Records</NavLink>
             <NavLink to="/treatment-planner">Treatment Plan</NavLink>
+            <NavLink to="/marketplace">Marketplace</NavLink>
           </nav>
         ) : (
           <nav className="hidden md:flex items-center space-x-8">
@@ -65,31 +69,46 @@ const Navbar = () => {
 
         <div className="hidden md:flex items-center space-x-4">
           {isAuthenticated ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                  <UserAvatar name={user?.name || "User"} className="h-10 w-10" />
+            <>
+              <Link to="/marketplace" className="relative mr-2">
+                <Button variant="ghost" size="icon" className="relative">
+                  <ShoppingCart className="h-5 w-5" />
+                  {getCartCount() > 0 && (
+                    <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0">
+                      {getCartCount()}
+                    </Badge>
+                  )}
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>{user?.name}</DropdownMenuLabel>
-                <DropdownMenuLabel className="text-sm font-normal text-muted-foreground">
-                  {user?.email}
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/dashboard">Dashboard</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/appointments">Appointments</Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout} className="text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                    <UserAvatar name={user?.name || "User"} className="h-10 w-10" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>{user?.name}</DropdownMenuLabel>
+                  <DropdownMenuLabel className="text-sm font-normal text-muted-foreground">
+                    {user?.email}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard">Dashboard</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/appointments">Appointments</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/marketplace">Marketplace</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout} className="text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
           ) : (
             <>
               <Button variant="outline" size="sm" className="rounded-full px-5" asChild>
@@ -165,6 +184,18 @@ const Navbar = () => {
                   inactiveClassName="text-foreground/80 hover:text-foreground"
                 >
                   Treatment Plan
+                </NavLink>
+                <NavLink 
+                  to="/marketplace" 
+                  onClick={() => setIsOpen(false)}
+                  className="py-3"
+                  activeClassName="text-primary font-medium"
+                  inactiveClassName="text-foreground/80 hover:text-foreground"
+                >
+                  Marketplace
+                  {getCartCount() > 0 && (
+                    <Badge className="ml-2">{getCartCount()}</Badge>
+                  )}
                 </NavLink>
               </nav>
               <div className="mt-auto">
