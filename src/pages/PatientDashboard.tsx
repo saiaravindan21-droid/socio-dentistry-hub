@@ -1,4 +1,6 @@
+
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import PageLayout from '@/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,11 +10,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Bell, Calendar as CalendarIcon, ClipboardList, Clock, Stethoscope } from 'lucide-react';
 import UserAvatar from '@/components/common/UserAvatar';
-
-const mockAppointments = [
-  { id: 1, date: 'Oct 15, 2023', time: '10:00 AM', doctor: 'Dr. Smith', type: 'Regular Checkup' },
-  { id: 2, date: 'Nov 2, 2023', time: '2:30 PM', doctor: 'Dr. Johnson', type: 'Cleaning' },
-];
+import { useAuth } from '@/context/AuthContext';
 
 const mockTreatments = [
   { name: 'Cleanings', completed: 2, total: 2 },
@@ -31,16 +29,22 @@ const mockVisitData = [
 
 const PatientDashboard = () => {
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const { user } = useAuth();
+  
+  // Get next appointment from user's appointments (if any)
+  const nextAppointment = user?.appointments && user.appointments.length > 0 
+    ? user.appointments[user.appointments.length - 1] 
+    : null;
   
   return (
     <PageLayout>
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3">
-            <UserAvatar name="Sarah Johnson" className="h-12 w-12" />
+            <UserAvatar name={user?.name || "User"} className="h-12 w-12" />
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Patient Dashboard</h1>
-              <p className="text-muted-foreground">Welcome back, Sarah! Manage your dental health in one place.</p>
+              <p className="text-muted-foreground">Welcome back, {user?.name?.split(' ')[0] || 'User'}! Manage your dental health in one place.</p>
             </div>
           </div>
           <Button className="flex items-center gap-2">
@@ -55,28 +59,41 @@ const PatientDashboard = () => {
               <CardDescription>Your upcoming dental visit</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="bg-primary/10 rounded-full p-2">
-                  <CalendarIcon className="h-5 w-5 text-primary" />
+              {nextAppointment ? (
+                <>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="bg-primary/10 rounded-full p-2">
+                      <CalendarIcon className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium">{nextAppointment.type}</p>
+                      <p className="text-sm text-muted-foreground">{nextAppointment.date} at {nextAppointment.time}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="bg-primary/10 rounded-full p-2">
+                      <Stethoscope className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium">{nextAppointment.doctor}</p>
+                      <p className="text-sm text-muted-foreground">General Dentist</p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-4">
+                  <p className="text-muted-foreground text-center mb-2">No upcoming appointments</p>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to="/appointments">Schedule Now</Link>
+                  </Button>
                 </div>
-                <div>
-                  <p className="font-medium">Regular Checkup</p>
-                  <p className="text-sm text-muted-foreground">Oct 15, 2023 at 10:00 AM</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="bg-primary/10 rounded-full p-2">
-                  <Stethoscope className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium">Dr. Smith</p>
-                  <p className="text-sm text-muted-foreground">General Dentist</p>
-                </div>
-              </div>
+              )}
             </CardContent>
-            <CardFooter>
-              <Button variant="outline" className="w-full">Reschedule</Button>
-            </CardFooter>
+            {nextAppointment && (
+              <CardFooter>
+                <Button variant="outline" className="w-full">Reschedule</Button>
+              </CardFooter>
+            )}
           </Card>
           
           <Card>
@@ -143,28 +160,40 @@ const PatientDashboard = () => {
                 <CardDescription>View and manage your scheduled visits</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {mockAppointments.map((appointment) => (
-                    <div key={appointment.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <div className="bg-primary/10 p-3 rounded-full">
-                          <Clock className="h-5 w-5 text-primary" />
+                {user?.appointments && user.appointments.length > 0 ? (
+                  <div className="space-y-4">
+                    {user.appointments.map((appointment, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center gap-4">
+                          <div className="bg-primary/10 p-3 rounded-full">
+                            <Clock className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{appointment.type}</p>
+                            <p className="text-sm text-muted-foreground">{appointment.date} at {appointment.time}</p>
+                            <p className="text-sm text-muted-foreground">{appointment.doctor}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium">{appointment.type}</p>
-                          <p className="text-sm text-muted-foreground">{appointment.date} at {appointment.time}</p>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm">Reschedule</Button>
+                          <Button variant="destructive" size="sm">Cancel</Button>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">Reschedule</Button>
-                        <Button variant="destructive" size="sm">Cancel</Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-10">
+                    <p className="text-muted-foreground mb-4">You don't have any appointments scheduled</p>
+                    <Button asChild>
+                      <Link to="/appointments">Book New Appointment</Link>
+                    </Button>
+                  </div>
+                )}
               </CardContent>
               <CardFooter>
-                <Button className="w-full">Book New Appointment</Button>
+                <Button className="w-full" asChild>
+                  <Link to="/appointments">Book New Appointment</Link>
+                </Button>
               </CardFooter>
             </Card>
           </TabsContent>
@@ -206,7 +235,9 @@ const PatientDashboard = () => {
                 />
               </CardContent>
               <CardFooter className="flex justify-center">
-                <Button>Book on Selected Date</Button>
+                <Button asChild>
+                  <Link to="/appointments">Book on Selected Date</Link>
+                </Button>
               </CardFooter>
             </Card>
           </TabsContent>
@@ -244,7 +275,9 @@ const PatientDashboard = () => {
               </div>
             </CardContent>
             <CardFooter>
-              <Button variant="outline" className="w-full">All Records</Button>
+              <Button variant="outline" className="w-full" asChild>
+                <Link to="/records">All Records</Link>
+              </Button>
             </CardFooter>
           </Card>
           

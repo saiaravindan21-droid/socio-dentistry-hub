@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { format } from 'date-fns';
 import PageLayout from '@/components/layout/PageLayout';
@@ -12,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from '@/hooks/use-toast';
 import { CalendarIcon, CheckCircle2, Clock } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 const mockDoctors = [
   { id: 1, name: 'Dr. Sarah Smith', specialty: 'General Dentistry', availableTimes: ['9:00 AM', '11:30 AM', '2:00 PM'] },
@@ -30,11 +30,16 @@ const appointmentTypes = [
 ];
 
 const Appointments = () => {
+  const { user, addAppointment } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedDoctor, setSelectedDoctor] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [selectedType, setSelectedType] = useState<string>('');
   const [currentStep, setCurrentStep] = useState(1);
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [phone, setPhone] = useState('');
+  const [notes, setNotes] = useState('');
   
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
@@ -89,17 +94,47 @@ const Appointments = () => {
   };
   
   const handleBookAppointment = () => {
-    // In a real application, this would call an API to book the appointment
+    if (!selectedDate || !selectedDoctor || !selectedTime || !selectedType) {
+      toast({
+        title: "Missing information",
+        description: "Please complete all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const selectedDoctorData = mockDoctors.find(d => d.id.toString() === selectedDoctor);
+    const selectedTypeData = appointmentTypes.find(t => t.id === selectedType);
+    
+    if (!selectedDoctorData || !selectedTypeData) {
+      toast({
+        title: "Invalid selection",
+        description: "Please make valid selections for doctor and appointment type.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const newAppointment = {
+      date: format(selectedDate, 'MMMM d, yyyy'),
+      time: selectedTime,
+      doctor: selectedDoctorData.name,
+      type: selectedTypeData.name,
+    };
+    
+    addAppointment(newAppointment);
+    
     toast({
       title: "Appointment Booked!",
-      description: `Your appointment has been scheduled for ${selectedDate ? format(selectedDate, 'MMMM d, yyyy') : ''} at ${selectedTime}.`,
+      description: `Your appointment has been scheduled for ${format(selectedDate, 'MMMM d, yyyy')} at ${selectedTime}.`,
     });
     
-    // Reset the form
     setSelectedDate(new Date());
     setSelectedDoctor('');
     setSelectedTime('');
     setSelectedType('');
+    setPhone('');
+    setNotes('');
     setCurrentStep(1);
   };
   
@@ -171,7 +206,6 @@ const Appointments = () => {
                       selected={selectedDate}
                       onSelect={handleDateSelect}
                       disabled={(date) => {
-                        // Disable past dates and weekends
                         const day = date.getDay();
                         return date < new Date(new Date().setHours(0, 0, 0, 0)) || day === 0 || day === 6;
                       }}
@@ -303,19 +337,40 @@ const Appointments = () => {
                     <div className="space-y-4">
                       <div>
                         <Label htmlFor="name">Full Name</Label>
-                        <Input id="name" placeholder="Enter your full name" />
+                        <Input 
+                          id="name" 
+                          placeholder="Enter your full name" 
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                        />
                       </div>
                       <div>
                         <Label htmlFor="email">Email Address</Label>
-                        <Input id="email" type="email" placeholder="Enter your email" />
+                        <Input 
+                          id="email" 
+                          type="email" 
+                          placeholder="Enter your email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                        />
                       </div>
                       <div>
                         <Label htmlFor="phone">Phone Number</Label>
-                        <Input id="phone" placeholder="Enter your phone number" />
+                        <Input 
+                          id="phone" 
+                          placeholder="Enter your phone number" 
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                        />
                       </div>
                       <div>
                         <Label htmlFor="notes">Special Notes (Optional)</Label>
-                        <Input id="notes" placeholder="Any special requirements or concerns" />
+                        <Input 
+                          id="notes" 
+                          placeholder="Any special requirements or concerns" 
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                        />
                       </div>
                     </div>
                   </CardContent>
@@ -335,41 +390,37 @@ const Appointments = () => {
                 <CardDescription>Manage your scheduled dental visits</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 bg-primary/10 rounded-full">
-                        <CalendarIcon className="h-5 w-5 text-primary" />
+                {user && user.appointments && user.appointments.length > 0 ? (
+                  <div className="space-y-4">
+                    {user.appointments.map((appointment, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center gap-4">
+                          <div className="p-2 bg-primary/10 rounded-full">
+                            <CalendarIcon className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{appointment.type}</p>
+                            <p className="text-sm text-muted-foreground">{appointment.date} at {appointment.time}</p>
+                            <p className="text-sm text-muted-foreground">{appointment.doctor}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm">Reschedule</Button>
+                          <Button variant="destructive" size="sm">Cancel</Button>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">Regular Checkup</p>
-                        <p className="text-sm text-muted-foreground">October 15, 2023 at 10:00 AM</p>
-                        <p className="text-sm text-muted-foreground">Dr. Sarah Smith</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">Reschedule</Button>
-                      <Button variant="destructive" size="sm">Cancel</Button>
-                    </div>
+                    ))}
                   </div>
-                  
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 bg-primary/10 rounded-full">
-                        <CalendarIcon className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Teeth Cleaning</p>
-                        <p className="text-sm text-muted-foreground">November 2, 2023 at 2:30 PM</p>
-                        <p className="text-sm text-muted-foreground">Dr. James Wilson</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">Reschedule</Button>
-                      <Button variant="destructive" size="sm">Cancel</Button>
-                    </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground mb-4">You don't have any upcoming appointments</p>
+                    <Button 
+                      onClick={() => document.querySelector('[data-value="book"]')?.dispatchEvent(new Event('click', { bubbles: true }))}
+                    >
+                      Book Your First Appointment
+                    </Button>
                   </div>
-                </div>
+                )}
               </CardContent>
               <CardFooter>
                 <Button variant="outline" className="w-full">Appointment History</Button>
