@@ -6,6 +6,7 @@ interface User {
   name: string;
   email: string;
   appointments: Appointment[];
+  dentalRecords: DentalRecord[];
 }
 
 export interface Appointment {
@@ -16,6 +17,17 @@ export interface Appointment {
   type: string;
 }
 
+export interface DentalRecord {
+  id: number;
+  type: string;
+  name: string;
+  date: string;
+  provider: string;
+  category: string;
+  format: string;
+  fileContent?: string; // Base64 encoded file content
+}
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
@@ -24,6 +36,7 @@ interface AuthContextType {
   logout: () => void;
   addAppointment: (appointment: Omit<Appointment, 'id'>) => void;
   cancelAppointment: (appointmentId: number) => void;
+  addDentalRecord: (record: Omit<DentalRecord, 'id' | 'date'>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -102,7 +115,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       name,
       email,
       password, // In a real app, this would be hashed
-      appointments: []
+      appointments: [],
+      dentalRecords: []
     };
     
     // Add to users list
@@ -185,6 +199,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('users', JSON.stringify(updatedUsers));
   };
 
+  const addDentalRecord = (recordData: Omit<DentalRecord, 'id' | 'date'>) => {
+    if (!user) return;
+    
+    const newRecord = {
+      id: Date.now(),
+      date: new Date().toISOString().split('T')[0],
+      ...recordData
+    };
+    
+    const updatedUser = {
+      ...user,
+      dentalRecords: [...(user.dentalRecords || []), newRecord]
+    };
+    
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    
+    // Also update in the users array
+    const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
+    const updatedUsers = storedUsers.map((u: any) => {
+      if (u.id === user.id) {
+        return { 
+          ...u, 
+          dentalRecords: [...(u.dentalRecords || []), newRecord] 
+        };
+      }
+      return u;
+    });
+    
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+  };
+
   const isAuthenticated = user !== null;
 
   const value = {
@@ -194,7 +240,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signup,
     logout,
     addAppointment,
-    cancelAppointment
+    cancelAppointment,
+    addDentalRecord
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

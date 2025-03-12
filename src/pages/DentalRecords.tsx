@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useRef, ChangeEvent } from 'react';
 import PageLayout from '@/components/layout/PageLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,35 +6,134 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-import { FileText, Image, Upload, Download, FilePlus, Search, Eye } from 'lucide-react';
-
-// Mock data for dental records
-const mockRecords = [
-  { id: 1, type: 'X-Ray', date: '2023-09-15', provider: 'Dr. Smith', category: 'Diagnostic', format: 'Image' },
-  { id: 2, type: 'Treatment Plan', date: '2023-08-22', provider: 'Dr. Johnson', category: 'Treatment', format: 'PDF' },
-  { id: 3, type: 'Medical History', date: '2023-06-30', provider: 'Dr. Wilson', category: 'History', format: 'PDF' },
-  { id: 4, type: 'Insurance Claim', date: '2023-05-12', provider: 'Admin Staff', category: 'Billing', format: 'PDF' },
-  { id: 5, type: 'Dental Scan', date: '2023-04-03', provider: 'Dr. Chen', category: 'Diagnostic', format: 'Image' },
-];
-
-// Mock data for medical history
-const mockMedicalHistory = {
-  allergies: ['Penicillin', 'Latex'],
-  conditions: ['Hypertension', 'Diabetes Type 2'],
-  medications: ['Lisinopril 10mg', 'Metformin 500mg'],
-  surgeries: ['Wisdom teeth extraction (2019)'],
-  familyHistory: ['Heart disease', 'Oral cancer'],
-};
+import { FileText, Image, Upload, Download, FilePlus, Search, Eye, CheckCircle } from 'lucide-react';
+import { useAuth, DentalRecord } from '@/context/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const DentalRecords = () => {
+  const { user, addDentalRecord } = useAuth();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [selectedDocType, setSelectedDocType] = useState<string>('');
+  const [notes, setNotes] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState('');
+  const [previewRecordId, setPreviewRecordId] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const filteredRecords = mockRecords.filter(record => 
+  const dentalRecords = user?.dentalRecords || [];
+  
+  const mockMedicalHistory = {
+    allergies: ['Penicillin', 'Latex'],
+    conditions: ['Hypertension', 'Diabetes Type 2'],
+    medications: ['Lisinopril 10mg', 'Metformin 500mg'],
+    surgeries: ['Wisdom teeth extraction (2019)'],
+    familyHistory: ['Heart disease', 'Oral cancer'],
+  };
+  
+  const filteredRecords = dentalRecords.filter(record => 
     record.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
     record.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
     record.provider.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setSelectedFileName(file.name);
+  };
+  
+  const handleDocTypeSelect = (docType: string) => {
+    setSelectedDocType(docType);
+  };
+  
+  const handleUpload = async () => {
+    const file = fileInputRef.current?.files?.[0];
+    
+    if (!file) {
+      toast({
+        title: "Error",
+        description: "Please select a file to upload",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!selectedDocType) {
+      toast({
+        title: "Error",
+        description: "Please select a document type",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsUploading(true);
+    
+    try {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const fileContent = reader.result as string;
+        const format = getFileFormat(file.type);
+        
+        addDentalRecord({
+          name: file.name,
+          type: selectedDocType,
+          provider: "Self Upload",
+          category: "Uploaded",
+          format,
+          fileContent
+        });
+        
+        setSelectedDocType('');
+        setNotes('');
+        setSelectedFileName('');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        
+        toast({
+          title: "Success",
+          description: "Record uploaded successfully",
+        });
+        
+        setIsUploading(false);
+      };
+      
+      reader.onerror = () => {
+        toast({
+          title: "Error",
+          description: "Failed to read file",
+          variant: "destructive"
+        });
+        setIsUploading(false);
+      };
+      
+      reader.readAsDataURL(file);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to upload file",
+        variant: "destructive"
+      });
+      setIsUploading(false);
+    }
+  };
+  
+  const getFileFormat = (mimeType: string): string => {
+    if (mimeType.startsWith('image/')) return 'Image';
+    if (mimeType === 'application/pdf') return 'PDF';
+    if (mimeType.startsWith('video/')) return 'Video';
+    if (mimeType.startsWith('audio/')) return 'Audio';
+    return 'Document';
+  };
   
   return (
     <PageLayout>
@@ -89,7 +187,20 @@ const DentalRecords = () => {
               </div>
             </div>
             
-            {viewMode === 'grid' ? (
+            {filteredRecords.length === 0 ? (
+              <div className="text-center py-16">
+                <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">No records found</h3>
+                <p className="text-muted-foreground max-w-md mx-auto mb-6">
+                  You haven't uploaded any dental records yet. Upload documents to keep track of your dental health.
+                </p>
+                <Button variant="default" asChild>
+                  <a href="#" onClick={(e) => { e.preventDefault(); document.querySelector('[value="upload"]')?.dispatchEvent(new MouseEvent('click')); }}>
+                    Upload Records
+                  </a>
+                </Button>
+              </div>
+            ) : viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredRecords.map((record) => (
                   <Card key={record.id}>
@@ -113,6 +224,10 @@ const DentalRecords = () => {
                     <CardContent>
                       <div className="text-sm">
                         <div className="flex justify-between py-1">
+                          <span className="text-muted-foreground">Name:</span>
+                          <span className="truncate max-w-[150px]">{record.name}</span>
+                        </div>
+                        <div className="flex justify-between py-1">
                           <span className="text-muted-foreground">Provider:</span>
                           <span>{record.provider}</span>
                         </div>
@@ -127,10 +242,29 @@ const DentalRecords = () => {
                       </div>
                     </CardContent>
                     <CardFooter className="flex gap-2">
-                      <Button variant="outline" size="sm" className="flex-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => setPreviewRecordId(record.id)}
+                      >
                         <Eye className="mr-2 h-4 w-4" /> View
                       </Button>
-                      <Button variant="outline" size="sm" className="flex-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => {
+                          if (record.fileContent) {
+                            const a = document.createElement('a');
+                            a.href = record.fileContent;
+                            a.download = record.name;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                          }
+                        }}
+                      >
                         <Download className="mr-2 h-4 w-4" /> Download
                       </Button>
                     </CardFooter>
@@ -144,6 +278,7 @@ const DentalRecords = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Record Type</TableHead>
+                        <TableHead>Name</TableHead>
                         <TableHead>Date Added</TableHead>
                         <TableHead>Provider</TableHead>
                         <TableHead>Category</TableHead>
@@ -155,6 +290,7 @@ const DentalRecords = () => {
                       {filteredRecords.map((record) => (
                         <TableRow key={record.id}>
                           <TableCell className="font-medium">{record.type}</TableCell>
+                          <TableCell className="max-w-[150px] truncate">{record.name}</TableCell>
                           <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
                           <TableCell>{record.provider}</TableCell>
                           <TableCell>{record.category}</TableCell>
@@ -170,10 +306,27 @@ const DentalRecords = () => {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
-                              <Button variant="outline" size="sm">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => setPreviewRecordId(record.id)}
+                              >
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              <Button variant="outline" size="sm">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => {
+                                  if (record.fileContent) {
+                                    const a = document.createElement('a');
+                                    a.href = record.fileContent;
+                                    a.download = record.name;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                  }
+                                }}
+                              >
                                 <Download className="h-4 w-4" />
                               </Button>
                             </div>
@@ -286,37 +439,124 @@ const DentalRecords = () => {
                 <CardDescription>Share your medical records securely with our dental team</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="border-2 border-dashed rounded-lg p-10 text-center">
+                <div 
+                  className="border-2 border-dashed rounded-lg p-10 text-center cursor-pointer hover:bg-gray-50 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    onChange={handleFileChange}
+                    accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx"
+                  />
                   <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="font-medium text-lg mb-1">Drop files here or click to upload</h3>
-                  <p className="text-sm text-muted-foreground mb-4">Support for PDF, JPG, PNG, and DICOM files up to 25MB</p>
+                  <h3 className="font-medium text-lg mb-1">
+                    {selectedFileName ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                        {selectedFileName}
+                      </span>
+                    ) : (
+                      "Drop files here or click to upload"
+                    )}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">Support for PDF, JPG, PNG, and document files up to 25MB</p>
                   <Button variant="outline" size="sm">Select Files</Button>
                 </div>
                 
                 <div>
                   <Label>Document Type</Label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
-                    <Button variant="outline" className="justify-start font-normal">X-Ray Results</Button>
-                    <Button variant="outline" className="justify-start font-normal">Lab Reports</Button>
-                    <Button variant="outline" className="justify-start font-normal">Insurance Forms</Button>
-                    <Button variant="outline" className="justify-start font-normal">Previous Treatments</Button>
-                    <Button variant="outline" className="justify-start font-normal">Medical History</Button>
-                    <Button variant="outline" className="justify-start font-normal">Other</Button>
+                    {["X-Ray Results", "Lab Reports", "Insurance Forms", "Previous Treatments", "Medical History", "Other"].map(docType => (
+                      <Button 
+                        key={docType}
+                        variant={selectedDocType === docType ? "default" : "outline"} 
+                        className="justify-start font-normal"
+                        onClick={() => handleDocTypeSelect(docType)}
+                      >
+                        {docType}
+                      </Button>
+                    ))}
                   </div>
                 </div>
                 
                 <div>
                   <Label htmlFor="notes">Additional Notes</Label>
-                  <Input id="notes" placeholder="Add any notes about the uploaded documents" />
+                  <Input 
+                    id="notes" 
+                    placeholder="Add any notes about the uploaded documents" 
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
                 </div>
               </CardContent>
               <CardFooter>
-                <Button className="w-full">Upload Documents</Button>
+                <Button 
+                  className="w-full" 
+                  onClick={handleUpload}
+                  disabled={isUploading || !selectedFileName || !selectedDocType}
+                >
+                  {isUploading ? (
+                    <>Uploading...</>
+                  ) : (
+                    <>Upload Documents</>
+                  )}
+                </Button>
               </CardFooter>
             </Card>
           </TabsContent>
         </Tabs>
       </div>
+      
+      <Dialog open={previewRecordId !== null} onOpenChange={(open) => !open && setPreviewRecordId(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {previewRecordId && dentalRecords.find(r => r.id === previewRecordId)?.type}
+            </DialogTitle>
+            <DialogDescription>
+              {previewRecordId && dentalRecords.find(r => r.id === previewRecordId)?.name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="mt-4">
+            {previewRecordId && dentalRecords.find(r => r.id === previewRecordId)?.fileContent && (
+              <div className="flex justify-center">
+                {dentalRecords.find(r => r.id === previewRecordId)?.format === 'Image' ? (
+                  <img 
+                    src={dentalRecords.find(r => r.id === previewRecordId)?.fileContent} 
+                    alt="Document preview" 
+                    className="max-w-full max-h-[60vh] object-contain"
+                  />
+                ) : (
+                  <div className="text-center p-6">
+                    <FileText className="w-16 h-16 mx-auto mb-4 text-primary" />
+                    <p>Preview not available for this file type</p>
+                    <Button 
+                      variant="outline" 
+                      className="mt-4"
+                      onClick={() => {
+                        const record = dentalRecords.find(r => r.id === previewRecordId);
+                        if (record?.fileContent) {
+                          const a = document.createElement('a');
+                          a.href = record.fileContent;
+                          a.download = record.name;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                        }
+                      }}
+                    >
+                      <Download className="mr-2 h-4 w-4" /> Download
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 };
