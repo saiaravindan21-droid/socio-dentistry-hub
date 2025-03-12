@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -24,6 +23,7 @@ interface AuthContextType {
   signup: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   addAppointment: (appointment: Omit<Appointment, 'id'>) => void;
+  cancelAppointment: (appointmentId: number) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -143,7 +143,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
     const updatedUsers = storedUsers.map((u: any) => {
       if (u.id === user.id) {
-        return { ...u, appointments: [...(u.appointments || []), newAppointment] };
+        return { 
+          ...u, 
+          appointments: [...(u.appointments || []), newAppointment] 
+        };
+      }
+      return u;
+    });
+    
+    localStorage.setItem('users', JSON.stringify(updatedUsers));
+  };
+
+  const cancelAppointment = (appointmentId: number) => {
+    if (!user) return;
+    
+    // Filter out the appointment to be canceled
+    const updatedAppointments = user.appointments.filter(
+      appointment => appointment.id !== appointmentId
+    );
+    
+    const updatedUser = {
+      ...user,
+      appointments: updatedAppointments
+    };
+    
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    
+    // Also update in the users array
+    const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
+    const updatedUsers = storedUsers.map((u: any) => {
+      if (u.id === user.id) {
+        return { 
+          ...u, 
+          appointments: updatedAppointments 
+        };
       }
       return u;
     });
@@ -159,7 +193,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     signup,
     logout,
-    addAppointment
+    addAppointment,
+    cancelAppointment
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

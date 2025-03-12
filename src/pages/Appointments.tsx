@@ -10,6 +10,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from '@/hooks/use-toast';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { CalendarIcon, CheckCircle2, Clock } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -30,7 +41,7 @@ const appointmentTypes = [
 ];
 
 const Appointments = () => {
-  const { user, addAppointment } = useAuth();
+  const { user, addAppointment, cancelAppointment } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedDoctor, setSelectedDoctor] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
@@ -40,6 +51,7 @@ const Appointments = () => {
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');
+  const [appointmentToCancel, setAppointmentToCancel] = useState<number | null>(null);
   
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
@@ -136,6 +148,22 @@ const Appointments = () => {
     setPhone('');
     setNotes('');
     setCurrentStep(1);
+  };
+  
+  const handleCancelAppointment = (appointmentId: number) => {
+    setAppointmentToCancel(appointmentId);
+  };
+  
+  const confirmCancelAppointment = () => {
+    if (appointmentToCancel) {
+      cancelAppointment(appointmentToCancel);
+      setAppointmentToCancel(null);
+      
+      toast({
+        title: "Appointment Canceled",
+        description: "Your appointment has been successfully canceled.",
+      });
+    }
   };
   
   const selectedDoctorData = selectedDoctor ? mockDoctors.find(d => d.id.toString() === selectedDoctor) : null;
@@ -406,7 +434,33 @@ const Appointments = () => {
                         </div>
                         <div className="flex gap-2">
                           <Button variant="outline" size="sm">Reschedule</Button>
-                          <Button variant="destructive" size="sm">Cancel</Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="destructive" 
+                                size="sm"
+                                onClick={() => handleCancelAppointment(appointment.id)}
+                              >
+                                Cancel
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Cancel Appointment</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to cancel this appointment? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setAppointmentToCancel(null)}>
+                                  Keep Appointment
+                                </AlertDialogCancel>
+                                <AlertDialogAction onClick={confirmCancelAppointment}>
+                                  Yes, Cancel Appointment
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </div>
                     ))}
